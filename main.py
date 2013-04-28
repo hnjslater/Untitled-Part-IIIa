@@ -206,6 +206,12 @@ def update_paths(finish,grid):
 
 def main():
 	pygame.init()
+
+        pygame.mixer.music.load('backing_music.ogg')
+        pygame.mixer.music.play(-1, 0.0)
+        musicPlaying = True
+
+
 	fpsClock = pygame.time.Clock()
 
 	win = pygame.display.set_mode((800,800))
@@ -280,10 +286,9 @@ def main():
 		if ticks > 100:
 			spawn_baddies(spawn_points, baddies)
 		
-		for key in grid:
-			value = grid[key]
-			if value == 1:
-				pygame.draw.rect(win, pygame.Color(255,255,255), (key[0]*unit, key[1]*unit, unit, unit))
+                pygame.draw.rect(win, pygame.Color(255,255,255), (finish[0]*unit, finish[1]*unit, unit, unit))
+                if survived > 0:
+                    pygame.draw.rect(win, pygame.Color(0,0,0),  (finish[0]*unit+1, finish[1]*unit+1, unit-2, survived*(unit-2)/16))
 				
 
 		for missile in missiles:
@@ -296,8 +301,12 @@ def main():
 		if ticks > 100:
 			ticks = 0;
 
+                if survived >= 16:
+                    sys.exit()
+
 		pygame.display.update()
 		fpsClock.tick(60)
+
 
 
 main()
