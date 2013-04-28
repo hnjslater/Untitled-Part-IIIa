@@ -4,9 +4,30 @@ import random
 from constants import *
 
 
-def spawn_baddies(spawn_points, baddies):
+def can_place_tower(towers, grid, x, y):
+    if len(towers) > MAX_TOWERS:
+        return False
+    elif x == MIN_GRID or x == MAX_GRID or y == MAX_GRID or y == MIN_GRID:
+        return False
+    else:
+        return grid[x,y] == 0
+
+def spawn_baddies(generation, baddies):
+        if generation > 4:
+            spawn_points = [(0,0), (0,16), (16,0), (16,16)]
+        elif generation > 2:
+            spawn_points = [(8,17)]
+        else:
+            spawn_points = [(8,0)]
 	for point in spawn_points:
 		baddies.append(Baddie(point[0],point[1]))
+
+def get_finish(generation):
+    if generation > 6:
+        return (0,8)
+    else:
+        return (8,8)
+
 
 
 class Missile():
@@ -41,7 +62,8 @@ class Missile():
 		else:
 			self.y += sy * int(5 * abs(dy/dx))
 			self.x += sx * int(5 * abs(dx/dy))
-		if (self.x >= self.baddie.x) and (self.x <= (self.baddie.x + UNIT)) and (self.y >= self.baddie.y) and (self.y <= (self.baddie.y + UNIT)):
+		if ((self.x >= self.baddie.x) and (self.x <= (self.baddie.x + UNIT))
+                    and (self.y >= self.baddie.y) and (self.y <= (self.baddie.y + UNIT))):
 			self.baddie.hit(10)
 			self.alive = False
 		
@@ -212,8 +234,10 @@ def update_paths(finish,grid):
 def main():
 	pygame.init()
 
-        #pygame.mixer.music.load('backing_music.ogg')
-        #pygame.mixer.music.play(-1, 0.0)
+        pygame.mixer.music.load('backing_music.ogg')
+        pygame.mixer.music.play(-1, 0.0)
+
+        generation = 0
 
 
 	fpsClock = pygame.time.Clock()
@@ -227,18 +251,22 @@ def main():
 	towers = {}
 	missiles = []
 	grid = {}
-	finish = (8,8)
+
 	survived = 0
 
-	spawn_points = [(0,0), (0,16), (16,0), (16,16)]
+
+
+
 	ticks = 0
-	for x in range(0,17):
-		for y in range(0,17):
+	for x in range(0,18):
+		for y in range(0,18):
 			grid[x,y] = 0;
 
-	grid[finish] = 1
+
+	spawn_baddies(generation, baddies)
+        finish = get_finish(generation)
         paths = update_paths(finish,grid)	
-	spawn_baddies(spawn_points, baddies)
+
 
 	while True:
 		win.fill(pygame.Color(0,0,0))
@@ -252,11 +280,10 @@ def main():
 				pygame.quit()
 				sys.exit()
 			elif event.type == pygame.MOUSEBUTTONUP:
-                            if not (x,y) in spawn_points:
                                 delete_tower = False
                                 if grid[x,y] == 2:
                                     delete_tower = True
-                                elif len(towers) < MAX_TOWERS:	
+                                elif can_place_tower(towers, grid, x, y):	
                                     grid[x,y] = 2
                                     towers[x,y] = Tower(x,y)
                                     paths = update_paths(finish,grid)
@@ -268,16 +295,6 @@ def main():
 
 
 		keys = pygame.key.get_pressed()
-
-#	if keys[K_z]: playerLocation+=1
-#	if keys[K_x]: playerLocation-=1
-#	if keys[K_SPACE]:
-#		if len(missiles) < 1: 
-#			m = Thing(playerX+originX, playerY+originY, -playerX/10, -playerY/10, 30)
-#			missiles.append(m)
-#
-
-
 		#for node in paths:
 		#	pygame.draw.rect(win, pygame.Color(min(255,int(8*paths[node])),0,0), (node[0]*UNIT, node[1]*UNIT, UNIT, UNIT))
 
@@ -295,8 +312,12 @@ def main():
 
 
 
+
 		if ticks > 100:
-			spawn_baddies(spawn_points, baddies)
+                    spawn_baddies(generation, baddies)
+                    finish = get_finish(generation)
+                    generation+=1
+                    paths = update_paths(finish,grid)
 		
                 pygame.draw.rect(win, pygame.Color(255,255,255), (finish[0]*UNIT, finish[1]*UNIT, UNIT, UNIT))
                 if survived > 0:
@@ -316,7 +337,7 @@ def main():
                 if survived >= 16:
                     sys.exit()
 
-                if len(towers) < MAX_TOWERS and (x,y) in grid and grid[x,y] == 0:
+                if can_place_tower(towers, grid, x, y):
                     Tower.static_paint(win,x,y)
                 elif (x,y) in grid and grid[x,y] == 2:
                     dx = 5
