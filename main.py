@@ -4,19 +4,23 @@ import random
 from constants import *
 
 
-def can_place_tower(towers, grid, x, y):
+def can_place_tower(towers, grid, spawn_points, x, y):
     if len(towers) > MAX_TOWERS:
+        return False
+    if (x,y) in spawn_points:
         return False
     else:
         return grid[x,y] == 0
 
-def spawn_baddies(generation, baddies):
+def get_spawn_points(generation, baddies):
         if generation > 4:
-            spawn_points = [(0,0), (0,16), (16,0), (16,16)]
+            return [(0,0), (0,16), (16,0), (16,16)]
         elif generation > 2:
-            spawn_points = [(8,17)]
+            return [(8,17)]
         else:
-            spawn_points = [(8,0)]
+            return [(8,0)]
+
+def spawn_baddies(baddies, spawn_points):
 	for point in spawn_points:
 		baddies.append(Baddie(point[0],point[1]))
 
@@ -249,19 +253,19 @@ def main():
 	towers = {}
 	missiles = []
 	grid = {}
+        spawn_points = []
 
 	survived = 0
 
 
 
 
-	ticks = 0
+	ticks = 100
 	for x in range(0,18):
 		for y in range(0,18):
 			grid[x,y] = 0;
 
 
-	spawn_baddies(generation, baddies)
         finish = get_finish(generation)
         paths = update_paths(finish,grid)	
 
@@ -269,6 +273,13 @@ def main():
 	while True:
 		win.fill(pygame.Color(0,0,0))
 		ticks += 1	
+
+		if ticks > 100:
+                    spawn_points = get_spawn_points(generation, baddies)
+                    spawn_baddies(baddies, spawn_points)
+                    finish = get_finish(generation)
+                    generation+=1
+                    paths = update_paths(finish,grid)
 
                 pos = pygame.mouse.get_pos()
                 x = pos[0] / UNIT
@@ -281,7 +292,7 @@ def main():
                                 delete_tower = False
                                 if grid[x,y] == 2:
                                     delete_tower = True
-                                elif can_place_tower(towers, grid, x, y):	
+                                elif can_place_tower(towers, grid, spawn_points, x, y):	
                                     grid[x,y] = 2
                                     towers[x,y] = Tower(x,y)
                                     paths = update_paths(finish,grid)
@@ -311,11 +322,7 @@ def main():
 
 
 
-		if ticks > 100:
-                    spawn_baddies(generation, baddies)
-                    finish = get_finish(generation)
-                    generation+=1
-                    paths = update_paths(finish,grid)
+
 		
                 pygame.draw.rect(win, pygame.Color(255,255,255), (finish[0]*UNIT, finish[1]*UNIT, UNIT, UNIT))
                 if survived > 0:
@@ -335,7 +342,7 @@ def main():
                 if survived >= 16:
                     sys.exit()
 
-                if can_place_tower(towers, grid, x, y):
+                if can_place_tower(towers, grid, spawn_points, x, y):
                     pygame.draw.rect(win, pygame.Color(32,32,32), (x*UNIT, y*UNIT, UNIT, UNIT),4)
                 elif (x,y) in grid and grid[x,y] == 2:
                     dx = 5
