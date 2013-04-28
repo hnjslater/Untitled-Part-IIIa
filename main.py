@@ -161,6 +161,10 @@ class Baddie():
 
 
 def update_paths(finish,grid):
+	node_dict = {}
+        for x in xrange(0,GRID_SIZE):
+            for y in xrange(0,GRID_SIZE):
+                node_dict[x,y] = A_REALLY_BIG_NUMBER
 	paths = [[finish[0],finish[1],0]]
 	for key in paths:
 		current = key[2]
@@ -196,17 +200,20 @@ def update_paths(finish,grid):
 							add_it = False
 				if add_it:
 					paths.append(new_node)
-	node_dict = {}
+
 	for node in paths:
-		node_dict[(node[0], node[1])] = node[2]
+            node_dict[(node[0], node[1])] = node[2]
+        for node in node_dict:
+            if node_dict[node] == A_REALLY_BIG_NUMBER and grid[node] != 2:
+                return False
+
 	return node_dict	
 
 def main():
 	pygame.init()
 
-        pygame.mixer.music.load('backing_music.ogg')
-        pygame.mixer.music.play(-1, 0.0)
-        musicPlaying = True
+        #pygame.mixer.music.load('backing_music.ogg')
+        #pygame.mixer.music.play(-1, 0.0)
 
 
 	fpsClock = pygame.time.Clock()
@@ -245,17 +252,20 @@ def main():
 				pygame.quit()
 				sys.exit()
 			elif event.type == pygame.MOUSEBUTTONUP:
+                            if not (x,y) in spawn_points:
+                                delete_tower = False
+                                if grid[x,y] == 2:
+                                    delete_tower = True
+                                elif len(towers) < MAX_TOWERS:	
+                                    grid[x,y] = 2
+                                    towers[x,y] = Tower(x,y)
+                                    paths = update_paths(finish,grid)
+                                    delete_tower = (paths == False)
+                                if delete_tower:
+                                    grid[x,y] = 0
+                                    del towers[x,y]
+                                    paths = update_paths(finish,grid)
 
-
-				if not (x,y) in spawn_points:
-					if grid[x,y] == 2:
-						grid[x,y] = 0
-						del towers[x,y]
-                                                paths = update_paths(finish,grid)	
-					elif len(towers) < MAX_TOWERS:	
-						grid[x,y] = 2
-						towers[x,y] = Tower(x,y)
-                                                paths = update_paths(finish,grid)	
 
 		keys = pygame.key.get_pressed()
 
@@ -269,7 +279,7 @@ def main():
 
 
 		#for node in paths:
-		#	pygame.draw.rect(win, pygame.Color(min(255,int(8*paths[node])),0,0), (node[0]*unit, node[1]*unit, unit, unit))
+		#	pygame.draw.rect(win, pygame.Color(min(255,int(8*paths[node])),0,0), (node[0]*UNIT, node[1]*UNIT, UNIT, UNIT))
 
 		for baddie in baddies:
 			baddie.tick(paths,grid)
