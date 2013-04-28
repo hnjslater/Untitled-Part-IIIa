@@ -7,8 +7,6 @@ from constants import *
 def can_place_tower(towers, grid, x, y):
     if len(towers) > MAX_TOWERS:
         return False
-    elif x == MIN_GRID or x == MAX_GRID or y == MAX_GRID or y == MIN_GRID:
-        return False
     else:
         return grid[x,y] == 0
 
@@ -338,7 +336,7 @@ def main():
                     sys.exit()
 
                 if can_place_tower(towers, grid, x, y):
-                    Tower.static_paint(win,x,y)
+                    pygame.draw.rect(win, pygame.Color(32,32,32), (x*UNIT, y*UNIT, UNIT, UNIT),4)
                 elif (x,y) in grid and grid[x,y] == 2:
                     dx = 5
                     points = [ (x*UNIT-5, y*UNIT), (x*UNIT,y*UNIT-5), ((x+1)*UNIT+5, (y+1)*UNIT), ((x+1)*UNIT, (y+1)*UNIT+5) ]
