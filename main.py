@@ -317,6 +317,10 @@ def main():
                                     grid[x,y] = 0
                                     del towers[x,y]
                                     paths = update_paths(finishes,grid)
+                                    if paths == False:
+                                        grid[x,y] = 2
+                                        towers[x,y] = Tower(x,y)
+                                        paths = update_paths(finishes,grid)
                         elif event.type == pygame.KEYDOWN:
                             if event.key == pygame.K_p:
                                 constants.DEBUG = not constants.DEBUG
