@@ -2,9 +2,20 @@ import pygame, sys, math, random
 from pygame.locals import *
 import random
 from constants import *
+import constants
+
+def empty_grid():
+    grid = {}
+    for x in range(0,18):
+        for y in range(0,18):
+            grid[x,y] = 0;
+    return grid
+
 
 
 def can_place_tower(towers, grid, spawn_points, x, y):
+    if constants.DEBUG:
+        return True
     if len(towers) > MAX_TOWERS:
         return False
     if (x,y) in spawn_points:
@@ -25,12 +36,14 @@ def spawn_baddies(baddies, spawn_points):
 		baddies.append(Baddie(point[0],point[1]))
 
 def get_finish(generation):
+    if generation > 14:
+        return [(0,8), (16,8), (8,0), (8,16)]
+    if generation > 11:
+        return [(0,8), (16,8)]
     if generation > 6:
-        return (0,8)
+        return [(0,8)]
     else:
-        return (8,8)
-
-
+        return [(8,8)]
 
 class Missile():
 	def __init__(self,x,y,baddie):
@@ -86,26 +99,22 @@ class Tower():
 
 
 	def tick(self, baddies):
-		self.tick_count += 1
+            self.tick_count += 1
 
-		if self.tick_count > 20 and len(baddies) > 0:
+            if self.tick_count > 20 and len(baddies) > 0:
 
-			closest = None
-			distance = 0 
-			for baddie in baddies:
-				new_distance = ((self.x*UNIT - baddie.x) ** 2) + ((self.y*UNIT - baddie.y) ** 2)
-				if new_distance < distance or distance == 0:
-					closest = baddie
-					distance = new_distance
-                        if distance < ((5 * 20) ** 2):
-                            self.tick_count = 0
-                            return [Missile(self.x*UNIT+UNIT/2, self.y*UNIT+UNIT/2, closest)]
+                closest = None
+                distance = 0 
+                for baddie in baddies:
+                    new_distance = ((self.x*UNIT - baddie.x) ** 2) + ((self.y*UNIT - baddie.y) ** 2)
+                    if new_distance < distance or distance == 0:
+                        closest = baddie
+                        distance = new_distance
+                if distance < ((5 * 20) ** 2):
+                    self.tick_count = 0
+                    return [Missile(self.x*UNIT+UNIT/2, self.y*UNIT+UNIT/2, closest)]
 
-                return []
-
-
-		
-
+            return []
 
 class Baddie():
 	def __init__(self,x,y):
@@ -175,21 +184,14 @@ class Baddie():
 	def y(self):
 		return (self.current_y + ((self.mov /10.0) * (self.next_y - self.current_y))) * UNIT
 		
-
-
-
-
-
-
-
-
-
-def update_paths(finish,grid):
+def update_paths(finishes,grid):
 	node_dict = {}
         for x in xrange(0,GRID_SIZE):
             for y in xrange(0,GRID_SIZE):
                 node_dict[x,y] = A_REALLY_BIG_NUMBER
-	paths = [[finish[0],finish[1],0]]
+
+	paths = [(n[0],n[1],0) for n in finishes]
+
 	for key in paths:
 		current = key[2]
 		new_process = []
@@ -239,14 +241,13 @@ def main():
         pygame.mixer.music.load('backing_music.ogg')
         pygame.mixer.music.play(-1, 0.0)
 
-        generation = 0
 
+        game_status = GAME_UNPLAYED
 
 	fpsClock = pygame.time.Clock()
 
 	win = pygame.display.set_mode((SCREEN_SIZE,SCREEN_SIZE))
 	pygame.display.set_caption('game')
-
 	font = pygame.font.Font(None, 20)
 
 	baddies = []
@@ -254,32 +255,47 @@ def main():
 	missiles = []
 	grid = {}
         spawn_points = []
-
+        generation = 0
 	survived = 0
-
-
-
-
 	ticks = 100
-	for x in range(0,18):
-		for y in range(0,18):
-			grid[x,y] = 0;
-
-
-        finish = get_finish(generation)
-        paths = update_paths(finish,grid)	
-
+        playing = False
 
 	while True:
-		win.fill(pygame.Color(0,0,0))
+            win.fill(pygame.Color(0,0,0))
+            if not playing:
+                Tower.static_paint(win,8,8)
+                if game_status == GAME_LOST:
+                    scoreText = font.render("YOU LOSE", True, pygame.Color(255,255,255)) 
+                    win.blit(scoreText, (400, 400))                    
+                elif game_status == GAME_WON:
+                    scoreText = font.render("YOU WIN! Next time why not try hitting p for potato", True, pygame.Color(255,255,255)) 
+                    win.blit(scoreText, (400, 400)) 
+		for event in pygame.event.get():
+                    if event.type == QUIT:
+                            pygame.quit()
+                            sys.exit()
+                    elif event.type == pygame.MOUSEBUTTONUP:
+                        playing = True
+                        grid = empty_grid()
+                        finishes = get_finish(generation)
+                        paths = update_paths(finishes,grid)	
+                        baddies = []
+                        towers = {}
+                        missiles = []
+                        spawn_points = []
+                        generation = 0
+                        survived = 0
+                        ticks = 100
+            else:
+
 		ticks += 1	
 
 		if ticks > 100:
                     spawn_points = get_spawn_points(generation, baddies)
                     spawn_baddies(baddies, spawn_points)
-                    finish = get_finish(generation)
+                    finishes = get_finish(generation)
                     generation+=1
-                    paths = update_paths(finish,grid)
+                    paths = update_paths(finishes,grid)
 
                 pos = pygame.mouse.get_pos()
                 x = pos[0] / UNIT
@@ -295,22 +311,26 @@ def main():
                                 elif can_place_tower(towers, grid, spawn_points, x, y):	
                                     grid[x,y] = 2
                                     towers[x,y] = Tower(x,y)
-                                    paths = update_paths(finish,grid)
+                                    paths = update_paths(finishes,grid)
                                     delete_tower = (paths == False)
                                 if delete_tower:
                                     grid[x,y] = 0
                                     del towers[x,y]
-                                    paths = update_paths(finish,grid)
+                                    paths = update_paths(finishes,grid)
+                        elif event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_p:
+                                constants.DEBUG = not constants.DEBUG
 
 
 		keys = pygame.key.get_pressed()
-		#for node in paths:
-		#	pygame.draw.rect(win, pygame.Color(min(255,int(8*paths[node])),0,0), (node[0]*UNIT, node[1]*UNIT, UNIT, UNIT))
+                if constants.DEBUG:
+                    for node in paths:
+                            pygame.draw.rect(win, pygame.Color(max(0,255 -int(8*paths[node])),0,0), (node[0]*UNIT, node[1]*UNIT, UNIT, UNIT))
 
 		for baddie in baddies:
 			baddie.tick(paths,grid)
 			baddie.paint(win)
-			if baddie.current_x == finish[0] and baddie.current_y == finish[1]:
+			if (baddie.current_x, baddie.current_y) in finishes:
 				survived+=1
 				baddie.kill()
 		
@@ -318,16 +338,10 @@ def main():
 			missiles += towers[tower].tick(baddies)
 			towers[tower].paint(win)
 
-
-
-
-
-
-		
-                pygame.draw.rect(win, pygame.Color(255,255,255), (finish[0]*UNIT, finish[1]*UNIT, UNIT, UNIT))
-                if survived > 0:
-                    pygame.draw.rect(win, pygame.Color(0,0,0),  (finish[0]*UNIT+1, finish[1]*UNIT+1, UNIT-2, survived*(UNIT-2)/16))
-				
+	        for finish in finishes:	
+                    pygame.draw.rect(win, pygame.Color(255,255,255), (finish[0]*UNIT, finish[1]*UNIT, UNIT, UNIT))
+                    if survived > 0:
+                        pygame.draw.rect(win, pygame.Color(0,0,0),  (finish[0]*UNIT+1, finish[1]*UNIT+1, UNIT-2, min(16,survived)*(UNIT-2)/16))
 
 		for missile in missiles:
 			missile.paint(win)
@@ -337,10 +351,15 @@ def main():
 		missiles = [m for m in missiles if m.alive]
 
 		if ticks > 100:
-			ticks = 0;
+			ticks = 0
 
-                if survived >= 16:
-                    sys.exit()
+                if survived >= 16 and not constants.DEBUG:
+                    playing = False
+                    game_status = GAME_LOST
+                elif generation >= 20 and not constants.DEBUG:
+                    playing = False
+                    game_status = GAME_WON
+
 
                 if can_place_tower(towers, grid, spawn_points, x, y):
                     pygame.draw.rect(win, pygame.Color(32,32,32), (x*UNIT, y*UNIT, UNIT, UNIT),4)
@@ -351,8 +370,8 @@ def main():
                     points = [ ((x+1)*UNIT, y*UNIT-5), ((x+1)*UNIT+5, y*UNIT), (x*UNIT, (y+1)*UNIT+5), (x*UNIT-5, (y+1)*UNIT) ]    
                     pygame.draw.polygon(win, CROSS_COLOR, points); 
 
-		pygame.display.update()
-		fpsClock.tick(30)
+            pygame.display.update()
+            fpsClock.tick(30)
 
 
 
